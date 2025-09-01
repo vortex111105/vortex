@@ -1,0 +1,359 @@
+/*
+VORTEX - Single File React App (Tailwind CSS)
+
+How to use:
+- This is a single-file React component meant for quick preview in a React app (Create React App / Vite).
+- Tailwind CSS must be configured in your project for classes to work.
+- Replace mock API calls (simulated with local state) with your real backend endpoints.
+- This file contains: Landing, Marketplace, Product modal/cart flow, Community (artist upload), Forum (simple threads), Rankings, and Admin Workshop Panel (orders queue).
+
+Notes on backend integration:
+- Auth: replace simple "login" with real auth (JWT / NextAuth).
+- File upload: integrate signed uploads (S3 / Backblaze / Cloudinary) and send resulting URL in the upload payload.
+- Payments: call your payment gateway (MercadoPago/Stripe) on purchase; backend should handle order fulfilment and commission calculation.
+- Order push to workshop: webhook or direct DB entry the admin panel reads from.
+
+*/
+
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+
+// Mock data generators
+const sampleProducts = [
+  { id: 1, title: "Remera - Diseño Vortex", price: 2500, artist: "LunaArte", img: null },
+  { id: 2, title: "Termo - Aurora", price: 4200, artist: "PabloD", img: null },
+  { id: 3, title: "Cuadro - Minimal", price: 7500, artist: "MZEstudio", img: null }
+];
+
+const sampleThreads = [
+  { id: 1, title: "Técnicas de sublimado", replies: 12 },
+  { id: 2, title: "Mejor base para estampas", replies: 4 }
+];
+
+const sampleArtists = [
+  { id: "a1", name: "LunaArte", bio: "Ilustradora - work in progress", portfolio: [] },
+  { id: "a2", name: "PabloD", bio: "Diseños geométricos", portfolio: [] }
+];
+
+export default function VortexApp() {
+  // App state
+  const [tab, setTab] = useState("inicio");
+  const [products, setProducts] = useState(sampleProducts);
+  const [cart, setCart] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [threads, setThreads] = useState(sampleThreads);
+  const [artists, setArtists] = useState(sampleArtists);
+  const [orders, setOrders] = useState([]); // admin workshop queue
+  const [user, setUser] = useState({ id: null, name: null, isArtist: false, isAdmin: false });
+
+  useEffect(() => {
+    // load initial data from APIs when integrated
+  }, []);
+
+  // --- CART / PURCHASE SIMULATION ---
+  function addToCart(product) {
+    setCart(prev => [...prev, product]);
+  }
+
+  function checkout() {
+    if (cart.length === 0) return alert("El carrito está vacío");
+    // Simulate payment success and create order
+    const newOrder = {
+      id: Date.now(),
+      items: cart,
+      status: "pendiente_taller",
+      address: "Dirección de prueba",
+      createdAt: new Date().toISOString()
+    };
+    setOrders(prev => [newOrder, ...prev]);
+    setCart([]);
+    setTab("admin");
+    alert("Pago simulado OK — pedido enviado al taller (ver panel admin)");
+  }
+
+  // --- ARTIST UPLOAD (simulado) ---
+  function artistUpload({ title, price, file }) {
+    // Replace with: upload file -> get URL -> save product via backend
+    const newProd = { id: Date.now(), title, price: Number(price), artist: user.name || "Artista_anon", img: null };
+    setProducts(prev => [newProd, ...prev]);
+    alert("Diseño subido (simulado). Ahora aparece en Marketplace.");
+    setTab("marketplace");
+  }
+
+  // --- ADMIN: marcar orden como producido/enviado ---
+  function updateOrderStatus(orderId, status) {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  }
+
+  // --- Forum: crear thread ---
+  function createThread(title) {
+    const t = { id: Date.now(), title, replies: 0 };
+    setThreads(prev => [t, ...prev]);
+    setTab("forum");
+  }
+
+  // Tiny header
+  const Header = () => (
+    <header className="bg-white shadow-sm sticky top-0 z-30">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="text-2xl font-extrabold">VORTEX</div>
+          <nav className="hidden md:flex gap-3 text-sm text-gray-600">
+            <button onClick={() => setTab('inicio')} className="hover:underline">Inicio</button>
+            <button onClick={() => setTab('marketplace')} className="hover:underline">Marketplace</button>
+            <button onClick={() => setTab('community')} className="hover:underline">Comunidad</button>
+            <button onClick={() => setTab('forum')} className="hover:underline">Foro</button>
+            <button onClick={() => setTab('ranking')} className="hover:underline">Ranking</button>
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block text-sm text-gray-600">Carrito: {cart.length}</div>
+          <div>
+            {user.name ? (
+              <div className="text-sm">Hola, {user.name}</div>
+            ) : (
+              <div className="flex gap-2">
+                <button className="text-sm underline" onClick={() => setUser({ id: 1, name: 'Ignacio', isArtist: true, isAdmin: true })}>Entrar (sim)</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+
+  // --- Sections ---
+  function Inicio() {
+    return (
+      <main className="max-w-6xl mx-auto p-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid md:grid-cols-2 gap-6 items-center">
+          <div>
+            <h1 className="text-4xl font-bold">VORTEX — Plataforma para artistas y producción central</h1>
+            <p className="mt-4 text-gray-700">Sube tu diseño, nosotros lo producimos y enviamos. El artista cobra comisión sin preocuparse por la logística.</p>
+
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setTab('marketplace')} className="px-4 py-2 rounded-lg bg-black text-white">Ver Marketplace</button>
+              <button onClick={() => setTab('community')} className="px-4 py-2 rounded-lg border">Unirme como artista</button>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-6">
+            <h3 className="font-semibold">Ranking semanal</h3>
+            <ol className="mt-4 space-y-3">
+              {products.slice(0,3).map(p => (
+                <li key={p.id} className="p-3 bg-white rounded shadow-sm flex justify-between">
+                  <div>
+                    <div className="font-medium">{p.title}</div>
+                    <div className="text-xs text-gray-500">{p.artist}</div>
+                  </div>
+                  <div className="text-sm font-semibold">${p.price}</div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </motion.div>
+
+        <section className="mt-10">
+          <h3 className="font-bold">¿Cómo funciona?</h3>
+          <div className="grid md:grid-cols-3 gap-4 mt-4">
+            <Card title="Sube tu diseño" desc="Artista sube imagen/archivo. Nosotros lo vinculamos al producto base." />
+            <Card title="Compra" desc="Cliente compra el producto final en la web." />
+            <Card title="Producimos y enviamos" desc="Taller VORTEX arma, verifica calidad y envía." />
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  function Marketplace() {
+    return (
+      <main className="max-w-6xl mx-auto p-4">
+        <h2 className="text-2xl font-bold">Marketplace</h2>
+        <div className="mt-4 grid md:grid-cols-3 gap-4">
+          {products.map(p => (
+            <div key={p.id} className="bg-white rounded-lg shadow p-4">
+              <div className="h-40 bg-gray-100 rounded flex items-center justify-center">{p.img ? <img src={p.img} alt="" /> : <svg width="80" height="50" viewBox="0 0 24 24" fill="none" className="opacity-40"><rect width="24" height="24" rx="4" fill="#E5E7EB"/></svg>}</div>
+              <div className="mt-3">
+                <div className="font-semibold">{p.title}</div>
+                <div className="text-xs text-gray-500">{p.artist}</div>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="font-bold">${p.price}</div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setSelectedProduct(p); }} className="px-3 py-1 border rounded">Ver</button>
+                    <button onClick={() => addToCart(p)} className="px-3 py-1 bg-black text-white rounded">Agregar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 bg-white p-4 rounded shadow">
+          <h3 className="font-semibold">Carrito</h3>
+          <div className="mt-2">
+            {cart.length === 0 ? <div className="text-sm text-gray-500">Carrito vacío</div> : (
+              <div>
+                {cart.map((c, i) => (<div key={i} className="flex justify-between py-2 border-b">{c.title}<div>${c.price}</div></div>))}
+                <div className="mt-3 flex justify-between font-bold">Total: ${cart.reduce((s, it) => s + it.price, 0)}</div>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={checkout} className="px-4 py-2 rounded bg-green-600 text-white">Pagar (simular)</button>
+                  <button onClick={() => setCart([])} className="px-4 py-2 rounded border">Limpiar</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  function Community() {
+    return (
+      <main className="max-w-5xl mx-auto p-4">
+        <h2 className="text-2xl font-bold">Comunidad</h2>
+        <p className="text-gray-600 mt-2">Perfiles de artistas, portfolios y subida de diseños.</p>
+
+        <div className="mt-6 grid md:grid-cols-3 gap-4">
+          {artists.map(a => (
+            <div key={a.id} className="bg-white p-4 rounded shadow">
+              <div className="font-semibold">{a.name}</div>
+              <div className="text-xs text-gray-500">{a.bio}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 bg-white p-4 rounded shadow">
+          <h3 className="font-semibold">Subir diseño</h3>
+          <ArtistUploadForm onUpload={artistUpload} />
+        </div>
+      </main>
+    );
+  }
+
+  function Forum() {
+    const [newTitle, setNewTitle] = useState("");
+    return (
+      <main className="max-w-5xl mx-auto p-4">
+        <h2 className="text-2xl font-bold">Foro</h2>
+        <div className="mt-4 bg-white p-4 rounded shadow">
+          <div className="flex gap-2">
+            <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Crear nueva discusión" className="flex-1 border p-2 rounded" />
+            <button onClick={() => { createThread(newTitle); setNewTitle(''); }} className="px-4 py-2 bg-black text-white rounded">Crear</button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {threads.map(t => (
+            <div key={t.id} className="bg-white p-3 rounded shadow flex justify-between">
+              <div>{t.title}</div>
+              <div className="text-xs text-gray-500">{t.replies} respuestas</div>
+            </div>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  function Ranking() {
+    return (
+      <main className="max-w-4xl mx-auto p-4">
+        <h2 className="text-2xl font-bold">Ranking semanal</h2>
+        <div className="mt-4 bg-white p-4 rounded shadow">
+          {products.map((p, i) => (
+            <div key={p.id} className="flex justify-between py-2 border-b">
+              <div className="flex gap-3 items-center">
+                <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">{i+1}</div>
+                <div>
+                  <div className="font-semibold">{p.title}</div>
+                  <div className="text-xs text-gray-500">{p.artist}</div>
+                </div>
+              </div>
+              <div className="text-sm font-semibold">${p.price}</div>
+            </div>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  function AdminPanel() {
+    return (
+      <main className="max-w-5xl mx-auto p-4">
+        <h2 className="text-2xl font-bold">Panel Taller (Admin)</h2>
+        <p className="text-sm text-gray-600">Aquí llegan los pedidos que deben producirse y enviarse.</p>
+
+        <div className="mt-4 space-y-3">
+          {orders.length === 0 ? <div className="text-gray-500">Sin pedidos</div> : orders.map(o => (
+            <div key={o.id} className="bg-white p-4 rounded shadow">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="font-semibold">Pedido #{o.id}</div>
+                  <div className="text-xs text-gray-500">{o.createdAt}</div>
+                  <div className="mt-2 text-sm">Items: {o.items.map(i => i.title).join(', ')}</div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button onClick={() => updateOrderStatus(o.id, 'en_produccion')} className="px-3 py-1 rounded border">En producción</button>
+                  <button onClick={() => updateOrderStatus(o.id, 'enviado')} className="px-3 py-1 rounded bg-green-600 text-white">Marcar enviado</button>
+                </div>
+              </div>
+              <div className="mt-2 text-sm text-gray-600">Estado: {o.status}</div>
+            </div>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  // --- Small shared components ---
+  function Card({ title, desc }) {
+    return (
+      <div className="bg-white p-4 rounded shadow">
+        <div className="font-semibold">{title}</div>
+        <div className="text-sm text-gray-600 mt-2">{desc}</div>
+      </div>
+    );
+  }
+
+  function ArtistUploadForm({ onUpload }) {
+    const [title, setTitle] = useState("");
+    const [price, setPrice] = useState(1500);
+    const [file, setFile] = useState(null);
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); onUpload({ title, price, file }); }} className="space-y-3">
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título del diseño" className="w-full border p-2 rounded" />
+        <input value={price} onChange={e => setPrice(e.target.value)} type="number" className="w-full border p-2 rounded" />
+        <input onChange={e => setFile(e.target.files[0])} type="file" accept="image/*" className="w-full" />
+        <div className="flex gap-2">
+          <button className="px-4 py-2 bg-black text-white rounded">Subir diseño</button>
+          <button type="button" onClick={() => { setTitle(''); setPrice(1500); setFile(null); }} className="px-4 py-2 border rounded">Limpiar</button>
+        </div>
+      </form>
+    );
+  }
+
+  // --- Main render ---
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <Header />
+
+      <div className="pt-6">
+        {tab === 'inicio' && <Inicio />}
+        {tab === 'marketplace' && <Marketplace />}
+        {tab === 'community' && <Community />}
+        {tab === 'forum' && <Forum />}
+        {tab === 'ranking' && <Ranking />}
+        {tab === 'admin' && user.isAdmin && <AdminPanel />}
+        {!user.isAdmin && tab === 'admin' && (
+          <main className="max-w-4xl mx-auto p-4">
+            <div className="bg-white p-6 rounded shadow">Acceso denegado. Inicia sesión como admin para ver el panel del taller.</div>
+          </main>
+        )}
+      </div>
+
+      <footer className="mt-12 bg-white border-t">
+        <div className="max-w-6xl mx-auto p-4 text-sm text-gray-600">© VORTEX — Producción centralizada | Diseño & Desarrollo</div>
+      </footer>
+    </div>
+  );
+}
